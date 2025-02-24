@@ -7,6 +7,7 @@ package libpages
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 
 	"github.com/keybase/client/go/kbfs/libkbfs"
 	"github.com/keybase/client/go/protocol/keybase1"
@@ -46,6 +47,7 @@ const certKVStoreNamespace = "cert-store-v1"
 
 // Get implements the autocert.Cache interface.
 func (s *certStoreBackedByKVStore) Get(ctx context.Context, key string) ([]byte, error) {
+	fmt.Printf("Get: %s\n", key)
 	res, err := s.serviceOwner.KeybaseService().GetKVStoreClient().GetKVEntry(ctx,
 		keybase1.GetKVEntryArg{
 			TeamName:  s.teamname,
@@ -56,8 +58,10 @@ func (s *certStoreBackedByKVStore) Get(ctx context.Context, key string) ([]byte,
 		return nil, errors.WithMessage(err, "kvstore get error")
 	}
 	if res.EntryValue == nil {
+		fmt.Printf("Get: %s res: nil\n", key)
 		return nil, nil
 	}
+	fmt.Printf("Get: %s res: %s\n", key, *res.EntryValue)
 	data, err := decodeData(*res.EntryValue)
 	if err != nil {
 		return nil, errors.WithMessage(err, "decodeData error")
@@ -67,6 +71,7 @@ func (s *certStoreBackedByKVStore) Get(ctx context.Context, key string) ([]byte,
 
 // Put implements the autocert.Cache interface.
 func (s *certStoreBackedByKVStore) Put(ctx context.Context, key string, data []byte) error {
+	fmt.Printf("Put: %s, %s\n", key, string(data))
 	_, err := s.serviceOwner.KeybaseService().GetKVStoreClient().PutKVEntry(ctx,
 		keybase1.PutKVEntryArg{
 			TeamName:   s.teamname,
@@ -82,6 +87,7 @@ func (s *certStoreBackedByKVStore) Put(ctx context.Context, key string, data []b
 
 // Delete implements the autocert.Cache interface.
 func (s *certStoreBackedByKVStore) Delete(ctx context.Context, key string) error {
+	fmt.Printf("Delete: %s\n", key)
 	_, err := s.serviceOwner.KeybaseService().GetKVStoreClient().DelKVEntry(ctx, keybase1.DelKVEntryArg{
 		TeamName:  s.teamname,
 		Namespace: certKVStoreNamespace,
