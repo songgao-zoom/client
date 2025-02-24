@@ -22,13 +22,15 @@ type keybaseServiceOwner interface {
 // caching is done here since acme/autocert has an in-memory cache already.
 type certStoreBackedByKVStore struct {
 	serviceOwner keybaseServiceOwner
+	teamname     string
 }
 
 var _ autocert.Cache = (*certStoreBackedByKVStore)(nil)
 
-func newCertStoreBackedByKVStore(serviceOwner keybaseServiceOwner) autocert.Cache {
+func newCertStoreBackedByKVStore(serviceOwner keybaseServiceOwner, teamname string) autocert.Cache {
 	return &certStoreBackedByKVStore{
 		serviceOwner: serviceOwner,
+		teamname:     teamname,
 	}
 }
 
@@ -46,6 +48,7 @@ const certKVStoreNamespace = "cert-store-v1"
 func (s *certStoreBackedByKVStore) Get(ctx context.Context, key string) ([]byte, error) {
 	res, err := s.serviceOwner.KeybaseService().GetKVStoreClient().GetKVEntry(ctx,
 		keybase1.GetKVEntryArg{
+			TeamName:  s.teamname,
 			Namespace: certKVStoreNamespace,
 			EntryKey:  key,
 		})
@@ -66,6 +69,7 @@ func (s *certStoreBackedByKVStore) Get(ctx context.Context, key string) ([]byte,
 func (s *certStoreBackedByKVStore) Put(ctx context.Context, key string, data []byte) error {
 	_, err := s.serviceOwner.KeybaseService().GetKVStoreClient().PutKVEntry(ctx,
 		keybase1.PutKVEntryArg{
+			TeamName:   s.teamname,
 			Namespace:  certKVStoreNamespace,
 			EntryKey:   key,
 			EntryValue: encodeData(data),
@@ -79,6 +83,7 @@ func (s *certStoreBackedByKVStore) Put(ctx context.Context, key string, data []b
 // Delete implements the autocert.Cache interface.
 func (s *certStoreBackedByKVStore) Delete(ctx context.Context, key string) error {
 	_, err := s.serviceOwner.KeybaseService().GetKVStoreClient().DelKVEntry(ctx, keybase1.DelKVEntryArg{
+		TeamName:  s.teamname,
 		Namespace: certKVStoreNamespace,
 		EntryKey:  key,
 	})

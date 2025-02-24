@@ -28,18 +28,20 @@ import (
 )
 
 var (
-	fProd          bool
-	fCertCache     string
-	fKBFSLogFile   string
-	fStathatEZKey  string
-	fStathatPrefix string
-	fBlacklist     string
-	fMySQLDSN      string
+	fProd            bool
+	fCertCache       string
+	fKVStoreTeamName string
+	fKBFSLogFile     string
+	fStathatEZKey    string
+	fStathatPrefix   string
+	fBlacklist       string
+	fMySQLDSN        string
 )
 
 func init() {
 	flag.BoolVar(&fProd, "prod", false, "disable development mode")
 	flag.StringVar(&fCertCache, "cert-cache", "", "specify a cert cache type. possible values are [disk, kvstore]. If empty, no cert cache is used.")
+	flag.StringVar(&fKVStoreTeamName, "kv-store-teamname", "", "specify a custom teamname for the kv store used by the cert cache. If empty, <username[:13]>_kv will be used.")
 	flag.StringVar(&fKBFSLogFile, "kbfs-logfile", "kbp-kbfs.log",
 		"path to KBFS log file; empty means print to stdout")
 	flag.StringVar(&fStathatEZKey, "stathat-key", "",
@@ -219,11 +221,45 @@ func main() {
 		logger.Panic("libkbfs.Init", zap.Error(fmt.Errorf("unknown cert cache: %s", fCertCache)))
 	}
 
+	var kvStoreTeamName string
+	if len(fKVStoreTeamName) == 0 {
+		session, err := kbConfig.CurrentSessionGetter().GetCurrentSession(ctx)
+		if err != nil {
+			logger.Panic("libkbfs.Init", zap.Error(err))
+		}
+		username := session.Name.String()
+		kvStoreTeamName = username[:13] + "_kv"
+		logger.Info("libkbfs.Init", zap.String("KVStoreTeamName", kvStoreTeamName))
+	}
+
+	// make sure the kv store team works
+	{
+		_, err := kbConfig.KeybaseService().GetKVStoreClient().PutKVEntry(ctx,
+			keybase1.PutKVEntryArg{
+				TeamName:   kvStoreTeamName,
+				Namespace:  "cert-store-probe",
+				EntryKey:   "test",
+				EntryValue: "hello",
+			})
+		if err != nil {
+			logger.Panic("libkbfs.Init", zap.Error(fmt.Errorf("kv store Put doesn't work: %v", err)))
+		}
+		_, err = kbConfig.KeybaseService().GetKVStoreClient().DelKVEntry(ctx, keybase1.DelKVEntryArg{
+			TeamName:  kvStoreTeamName,
+			Namespace: "cert-store-probe",
+			EntryKey:  "test",
+		})
+		if err != nil {
+			logger.Panic("libkbfs.Init", zap.Error(fmt.Errorf("kv store Del doesn't work: %v", err)))
+		}
+	}
+
 	serverConfig := &libpages.ServerConfig{
 		DomainBlacklist: removeEmpty(strings.Split(fBlacklist, ",")),
 		UseStaging:      !fProd,
 		Logger:          logger,
 		CertStore:       certStore,
+		KVStoreTeamName: kvStoreTeamName,
 		StatsReporter:   statsReporter,
 	}
 

@@ -54,6 +54,7 @@ type ServerConfig struct {
 	UseStaging      bool
 	Logger          *zap.Logger
 	CertStore       CertStoreType
+	KVStoreTeamName string
 	StatsReporter   StatsReporter
 
 	domainListsOnce sync.Once
@@ -503,7 +504,7 @@ func makeACMEManager(kbfsConfig libkbfs.Config, config *ServerConfig, hostPolicy
 			manager.Cache = autocert.DirCache(prodDiskCacheName)
 		}
 	case KVStoreCertStore:
-		manager.Cache = newCertStoreBackedByKVStore(kbfsConfig)
+		manager.Cache = newCertStoreBackedByKVStore(kbfsConfig, config.KVStoreTeamName)
 	default:
 	}
 
