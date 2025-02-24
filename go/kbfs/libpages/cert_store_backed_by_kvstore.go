@@ -56,7 +56,7 @@ func (s *certStoreBackedByKVStore) Get(ctx context.Context, key string) ([]byte,
 		return nil, errors.WithMessage(err, "kvstore get error")
 	}
 	if res.EntryValue == nil {
-		return nil, errors.New("kvstore get error: empty result")
+		return nil, nil
 	}
 	data, err := decodeData(*res.EntryValue)
 	if err != nil {
