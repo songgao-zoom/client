@@ -41,7 +41,7 @@ var (
 func init() {
 	flag.BoolVar(&fProd, "prod", false, "disable development mode")
 	flag.StringVar(&fCertCache, "cert-cache", "", "specify a cert cache type. possible values are [disk, kvstore]. If empty, no cert cache is used.")
-	flag.StringVar(&fKVStoreTeamName, "kv-store-teamname", "", "specify a custom teamname for the kv store used by the cert cache. If empty, <username[:13]>_kv will be used.")
+	flag.StringVar(&fKVStoreTeamName, "kv-store-teamname", "", "specify a custom teamname for the kv store used by the cert cache. If empty, <username>_<username> will be used.")
 	flag.StringVar(&fKBFSLogFile, "kbfs-logfile", "kbp-kbfs.log",
 		"path to KBFS log file; empty means print to stdout")
 	flag.StringVar(&fStathatEZKey, "stathat-key", "",
@@ -228,7 +228,7 @@ func main() {
 			logger.Panic("libkbfs.Init", zap.Error(err))
 		}
 		username := session.Name.String()
-		kvStoreTeamName = username[:13] + "_kv"
+		kvStoreTeamName = username + "," + username
 		logger.Info("libkbfs.Init", zap.String("KVStoreTeamName", kvStoreTeamName))
 	}
 
