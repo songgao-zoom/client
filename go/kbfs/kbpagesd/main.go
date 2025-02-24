@@ -29,7 +29,7 @@ import (
 
 var (
 	fProd          bool
-	fDiskCertCache bool
+	fCertCache     string
 	fKBFSLogFile   string
 	fStathatEZKey  string
 	fStathatPrefix string
@@ -39,7 +39,7 @@ var (
 
 func init() {
 	flag.BoolVar(&fProd, "prod", false, "disable development mode")
-	flag.BoolVar(&fDiskCertCache, "use-disk-cert-cache", false, "cache cert on disk")
+	flag.StringVar(&fCertCache, "cert-cache", "", "specify a cert cache type. possible values are [disk, kvstore]. If empty, no cert cache is used.")
 	flag.StringVar(&fKBFSLogFile, "kbfs-logfile", "kbp-kbfs.log",
 		"path to KBFS log file; empty means print to stdout")
 	flag.StringVar(&fStathatEZKey, "stathat-key", "",
@@ -212,8 +212,11 @@ func main() {
 	}
 
 	certStore := libpages.NoCertStore
-	if fDiskCertCache {
-		certStore = libpages.DiskCertStore
+	switch fCertCache {
+	case "", string(libpages.DiskCertStore), string(libpages.KVStoreCertStore):
+		certStore = libpages.CertStoreType(fCertCache)
+	default:
+		logger.Panic("libkbfs.Init", zap.Error(fmt.Errorf("unknown cert cache: %s", fCertCache)))
 	}
 
 	serverConfig := &libpages.ServerConfig{

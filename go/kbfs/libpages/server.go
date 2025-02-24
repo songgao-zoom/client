@@ -486,17 +486,18 @@ const (
 	prodDiskCacheName       = "./kbp-cert-cache"
 )
 
-func makeACMEManager(kbfsConfig libkbfs.Config, useStaging bool,
-	certStoreType CertStoreType, hostPolicy autocert.HostPolicy) (
+func makeACMEManager(kbfsConfig libkbfs.Config, config *ServerConfig, hostPolicy autocert.HostPolicy) (
 	*autocert.Manager, error) {
 	manager := &autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
 		HostPolicy: hostPolicy,
 	}
 
-	switch certStoreType {
+	config.Logger.Info("makeACMEManager",
+		zap.String("cert store type", string(config.CertStore)))
+	switch config.CertStore {
 	case DiskCertStore:
-		if useStaging {
+		if config.UseStaging {
 			manager.Cache = autocert.DirCache(stagingDiskCacheName)
 		} else {
 			manager.Cache = autocert.DirCache(prodDiskCacheName)
@@ -506,7 +507,7 @@ func makeACMEManager(kbfsConfig libkbfs.Config, useStaging bool,
 	default:
 	}
 
-	if useStaging {
+	if config.UseStaging {
 		acmeKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		if err != nil {
 			return nil, err
@@ -557,7 +558,7 @@ func ListenAndServe(ctx context.Context,
 	}
 
 	manager, err := makeACMEManager(
-		kbfsConfig, config.UseStaging, config.CertStore, server.allowDomain)
+		kbfsConfig, config, server.allowDomain)
 	if err != nil {
 		return err
 	}
