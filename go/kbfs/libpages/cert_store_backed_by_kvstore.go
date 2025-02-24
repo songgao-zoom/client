@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/base64"
 
-	"github.com/keybase/client/go/kbfs/idutil"
 	"github.com/keybase/client/go/kbfs/libkbfs"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/pkg/errors"
@@ -16,7 +15,6 @@ import (
 )
 
 type keybaseServiceOwner interface {
-	CurrentSessionGetter() idutil.CurrentSessionGetter
 	KeybaseService() libkbfs.KeybaseService
 }
 
@@ -46,13 +44,8 @@ const certKVStoreNamespace = "cert-store-v1"
 
 // Get implements the autocert.Cache interface.
 func (s *certStoreBackedByKVStore) Get(ctx context.Context, key string) ([]byte, error) {
-	session, err := s.serviceOwner.CurrentSessionGetter().GetCurrentSession(ctx)
-	if err != nil {
-		return nil, errors.WithMessage(err, "kvstore getting CurrentSession error")
-	}
 	res, err := s.serviceOwner.KeybaseService().GetKVStoreClient().GetKVEntry(ctx,
 		keybase1.GetKVEntryArg{
-			TeamName:  string(session.Name),
 			Namespace: certKVStoreNamespace,
 			EntryKey:  key,
 		})
@@ -71,13 +64,8 @@ func (s *certStoreBackedByKVStore) Get(ctx context.Context, key string) ([]byte,
 
 // Put implements the autocert.Cache interface.
 func (s *certStoreBackedByKVStore) Put(ctx context.Context, key string, data []byte) error {
-	session, err := s.serviceOwner.CurrentSessionGetter().GetCurrentSession(ctx)
-	if err != nil {
-		return errors.WithMessage(err, "kvstore getting CurrentSession error")
-	}
-	_, err = s.serviceOwner.KeybaseService().GetKVStoreClient().PutKVEntry(ctx,
+	_, err := s.serviceOwner.KeybaseService().GetKVStoreClient().PutKVEntry(ctx,
 		keybase1.PutKVEntryArg{
-			TeamName:   string(session.Name),
 			Namespace:  certKVStoreNamespace,
 			EntryKey:   key,
 			EntryValue: encodeData(data),
@@ -90,12 +78,7 @@ func (s *certStoreBackedByKVStore) Put(ctx context.Context, key string, data []b
 
 // Delete implements the autocert.Cache interface.
 func (s *certStoreBackedByKVStore) Delete(ctx context.Context, key string) error {
-	session, err := s.serviceOwner.CurrentSessionGetter().GetCurrentSession(ctx)
-	if err != nil {
-		return errors.WithMessage(err, "kvstore getting CurrentSession error")
-	}
-	_, err = s.serviceOwner.KeybaseService().GetKVStoreClient().DelKVEntry(ctx, keybase1.DelKVEntryArg{
-		TeamName:  string(session.Name),
+	_, err := s.serviceOwner.KeybaseService().GetKVStoreClient().DelKVEntry(ctx, keybase1.DelKVEntryArg{
 		Namespace: certKVStoreNamespace,
 		EntryKey:  key,
 	})
